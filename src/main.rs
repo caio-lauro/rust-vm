@@ -1,6 +1,6 @@
 mod hardware;
 
-use hardware::{Memory, Opcodes, Register, Registers};
+use hardware::{Memory, Opcodes, Register, Registers, TrapVector};
 
 use std::env;
 
@@ -134,11 +134,40 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16) {
             let (r0, r1, offset) = decode_without_flag(instruction);
             registers.update(r0, memory.read(registers.get(r1) + offset));
         }
-        Opcodes::LoadEffectiveAddress => {}
-        Opcodes::Store => {}
-        Opcodes::StoreIndirect => {}
-        Opcodes::StoreRegister => {}
-        Opcodes::Trap => {}
+        Opcodes::LoadEffectiveAddress => {
+            let (r0, pc_offset) = decode_pc_offset9(instruction);
+            registers.update(r0, registers.get(Register::PC.u16()) + pc_offset);
+        }
+        Opcodes::Store => {
+            let (sr, pc_offset) = decode_pc_offset9(instruction);
+            memory.write(
+                registers.get(Register::PC.u16()) + pc_offset,
+                registers.get(sr),
+            );
+        }
+        Opcodes::StoreIndirect => {
+            let (sr, pc_offset) = decode_pc_offset9(instruction);
+            memory.write(
+                memory.read(registers.get(Register::PC.u16()) + pc_offset),
+                registers.get(sr),
+            );
+        }
+        Opcodes::StoreRegister => {
+            let (sr, r0, offset) = decode_without_flag(instruction);
+            memory.write(r0 + offset, registers.get(sr));
+        }
+        Opcodes::Trap => {
+            let trap_vector = instruction & 0xFF;
+
+            match trap_vector.into() {
+                TrapVector::GetChar => {}
+                TrapVector::Out => {}
+                TrapVector::Puts => {}
+                TrapVector::In => {}
+                TrapVector::Putsp => {}
+                TrapVector::Halt => {}
+            }
+        }
         _ => {
             panic!("bad op code")
         }
@@ -146,5 +175,5 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16) {
 }
 
 fn read_image(image_path: &str) -> bool {
-    false
+    todo!();
 }
