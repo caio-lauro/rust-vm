@@ -3,5 +3,5 @@ mod instructions;
 mod memory;
 
 pub use flags::Flags;
-pub use instructions::Opcodes;
+pub use instructions::{Opcodes, TrapVector};
 pub use memory::{Memory, Register, Registers};

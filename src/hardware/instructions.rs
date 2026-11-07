@@ -42,3 +42,28 @@ impl From<u16> for Opcodes {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy)]
+pub enum TrapVector {
+    GetChar = 0x20,
+    Out = 0x21,
+    Puts = 0x22,
+    In = 0x23,
+    Putsp = 0x24,
+    Halt = 0x25,
+}
+
+impl From<u16> for TrapVector {
+    fn from(value: u16) -> Self {
+        use TrapVector::*;
+        match value {
+            0x20 => GetChar,
+            0x21 => Out,
+            0x22 => Puts,
+            0x23 => In,
+            0x24 => Putsp,
+            0x25 => Halt,
+            _ => panic!("value cannot be converted to trap vector"),
+        }
+    }
+}
