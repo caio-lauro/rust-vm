@@ -224,6 +224,10 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16, run
 
                     while word != 0x0000 {
                         let first_ascii_char = (word & 0xFF) as u8;
+                        if first_ascii_char == 0x00 {
+                            break;
+                        }
+
                         let second_ascii_char = (word >> 8) as u8;
                         if second_ascii_char != 0x00 {
                             stdout_handle
