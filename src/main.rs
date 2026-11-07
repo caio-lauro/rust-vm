@@ -1,4 +1,5 @@
 mod hardware;
+mod image;
 
 use hardware::{Memory, Opcodes, Register, Registers, TrapVector};
 
@@ -15,7 +16,7 @@ fn main() {
     }
 
     for i in 1..args.len() {
-        if !read_image(&args[i]) {
+        if !image::read(&args[i]) {
             panic!("failed to load image: {}", args[i]);
         }
     }
@@ -259,8 +260,4 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16, run
             panic!("bad op code")
         }
     }
-}
-
-fn read_image(image_path: &str) -> bool {
-    todo!();
 }
