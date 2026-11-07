@@ -19,10 +19,12 @@ impl Memory {
     }
 
     pub fn read(&self, address: u16) -> u16 {
-        0
+        todo!();
     }
 
-    pub fn write(&mut self) {}
+    pub fn write(&self, address: u16, value: u16) {
+        todo!();
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
