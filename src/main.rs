@@ -58,7 +58,7 @@ fn decode_without_flag(instruction: u16) -> (u16, u16, u16) {
 }
 
 fn decode_pc_offset9(instruction: u16) -> (u16, u16) {
-    let a0 = (instruction) >> 9 & 0x7;
+    let a0 = (instruction >> 9) & 0x7;
     let pc_offset = sign_extend(instruction & 0x1FF, 9);
     (a0, pc_offset)
 }
