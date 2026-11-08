@@ -1,12 +1,10 @@
 mod hardware;
 mod image;
+mod vm_io;
 
 use hardware::{Memory, Opcodes, Register, Registers, TrapVector};
 
-use std::{
-    env,
-    io::{self, Read, Write},
-};
+use std::{env, io};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -15,14 +13,14 @@ fn main() {
         panic!("lc3 [image-file1] ...");
     }
 
+    let mut memory = Memory::new();
+    let mut registers = Registers::new();
+
     for i in 1..args.len() {
-        if !image::read(&args[i]) {
+        if !image::read(&args[i], &mut memory) {
             panic!("failed to load image: {}", args[i]);
         }
     }
-
-    let mut memory = Memory::new();
-    let mut registers = Registers::new();
 
     let mut running = true;
     while running {
@@ -83,7 +81,8 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16, run
         Opcodes::LoadIndirect => {
             let (r0, pc_offset) = decode_pc_offset9(instruction);
 
-            let value = memory.read(memory.read(registers.get(Register::PC.u16()) + pc_offset));
+            let addr = memory.read(registers.get(Register::PC.u16()) + pc_offset);
+            let value = memory.read(addr);
 
             registers.update(r0, value);
         }
@@ -149,10 +148,8 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16, run
         }
         Opcodes::StoreIndirect => {
             let (sr, pc_offset) = decode_pc_offset9(instruction);
-            memory.write(
-                memory.read(registers.get(Register::PC.u16()) + pc_offset),
-                registers.get(sr),
-            );
+            let addr = memory.read(registers.get(Register::PC.u16()) + pc_offset);
+            memory.write(addr, registers.get(sr));
         }
         Opcodes::StoreRegister => {
             let (sr, r0, offset) = decode_without_flag(instruction);
@@ -163,21 +160,14 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16, run
 
             match trap_vector.into() {
                 TrapVector::GetChar => {
-                    let mut stdin_handle = io::stdin().lock();
-                    let mut byte = [0_u8];
-                    stdin_handle
-                        .read_exact(&mut byte)
-                        .expect("failed to read stdin");
-                    registers.update(Register::R0.u16(), byte[0] as u16);
+                    registers.update(Register::R0.u16(), vm_io::get_char());
                 }
                 TrapVector::Out => {
                     let word = registers.get(Register::R0.u16());
                     let ascii_char = (word & 0xFF) as u8;
                     let mut stdout_handle = io::stdout().lock();
-                    stdout_handle
-                        .write_all(&[ascii_char])
-                        .expect("failed to write to stdout");
-                    stdout_handle.flush().expect("failed to flush stdout");
+                    vm_io::putc(ascii_char, &mut stdout_handle);
+                    vm_io::flush(&mut stdout_handle);
                 }
                 TrapVector::Puts => {
                     let mut addr = registers.get(Register::R0.u16());
@@ -186,37 +176,26 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16, run
 
                     while word != 0x0000 {
                         let ascii_char = (word & 0xFF) as u8;
-                        stdout_handle
-                            .write_all(&[ascii_char])
-                            .expect("failed to write to stdout");
+                        vm_io::putc(ascii_char, &mut stdout_handle);
                         addr = addr.wrapping_add(1);
                         word = memory.read(addr);
                     }
 
-                    stdout_handle.flush().expect("failed to flush stdout");
+                    vm_io::flush(&mut stdout_handle);
                 }
                 TrapVector::In => {
                     let mut stdout_handle = io::stdout().lock();
-                    let mut stdin_handle = io::stdin().lock();
 
                     let prompt = b"Enter a character: ";
-                    stdout_handle
-                        .write_all(prompt)
-                        .expect("failed to write to stdout");
-                    stdout_handle.flush().expect("failed to flush stdout");
+                    vm_io::puts(prompt, &mut stdout_handle);
+                    vm_io::flush(&mut stdout_handle);
 
-                    let mut byte = [0_u8];
+                    let char = vm_io::get_char();
 
-                    stdin_handle
-                        .read_exact(&mut byte)
-                        .expect("failed to read stdin");
+                    vm_io::putc(char as u8, &mut stdout_handle);
+                    vm_io::flush(&mut stdout_handle);
 
-                    stdout_handle
-                        .write_all(&byte)
-                        .expect("failed to write to stdout");
-                    stdout_handle.flush().expect("failed to flush stdout");
-
-                    registers.update(Register::R0.u16(), byte[0] as u16)
+                    registers.update(Register::R0.u16(), char);
                 }
                 TrapVector::Putsp => {
                     let mut addr = registers.get(Register::R0.u16());
@@ -231,27 +210,22 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16, run
 
                         let second_ascii_char = (word >> 8) as u8;
                         if second_ascii_char != 0x00 {
-                            stdout_handle
-                                .write_all(&[first_ascii_char, second_ascii_char])
-                                .expect("failed to write to stdout");
+                            vm_io::puts(&[first_ascii_char, second_ascii_char], &mut stdout_handle);
+                            vm_io::putc(second_ascii_char, &mut stdout_handle);
                             addr = addr.wrapping_add(1);
                             word = memory.read(addr);
                         } else {
-                            stdout_handle
-                                .write_all(&[first_ascii_char])
-                                .expect("failed to write to stdout");
+                            vm_io::putc(first_ascii_char, &mut stdout_handle);
                             break;
                         }
                     }
 
-                    stdout_handle.flush().expect("failed to flush stdout");
+                    vm_io::flush(&mut stdout_handle);
                 }
                 TrapVector::Halt => {
                     let mut stdout_handle = io::stdout().lock();
-                    stdout_handle
-                        .write_all(b"HALT")
-                        .expect("failed to write to stdout");
-                    stdout_handle.flush().expect("failed to flush stdout");
+                    vm_io::puts(b"HALT", &mut stdout_handle);
+                    vm_io::flush(&mut stdout_handle);
                     *running = false;
                 }
             }
