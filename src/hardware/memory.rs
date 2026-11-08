@@ -1,6 +1,6 @@
 use std::unreachable;
 
-use crate::vm_io;
+use crate::{terminal, vm_io};
 
 #[derive(Debug)]
 pub struct Memory {
@@ -18,7 +18,7 @@ impl Memory {
 
     pub fn read(&mut self, address: u16) -> u16 {
         if address == MappedRegisters::KeyboardStatus as u16 {
-            if (check_key()) {
+            if terminal::check_key() {
                 self.memory[MappedRegisters::KeyboardStatus as usize] = 1 << 15;
                 self.memory[MappedRegisters::KeyboardData as usize] = vm_io::get_char();
             } else {

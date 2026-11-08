@@ -1,5 +1,6 @@
 mod hardware;
 mod image;
+mod terminal;
 mod vm_io;
 
 use hardware::{Memory, Opcodes, Register, Registers, TrapVector};
@@ -7,6 +8,8 @@ use hardware::{Memory, Opcodes, Register, Registers, TrapVector};
 use std::{env, io};
 
 fn main() {
+    let _guard = terminal::TerminalModeGuard::new();
+
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
