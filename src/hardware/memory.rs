@@ -1,29 +1,36 @@
 use std::unreachable;
 
-use crate::hardware::Register::CondFlags;
+use crate::vm_io;
 
 #[derive(Debug)]
 pub struct Memory {
     memory: Vec<u16>,
-    size: usize,
-    capacity: usize,
 }
+
+static MEMORY_MAX: usize = 1 << 16;
 
 impl Memory {
     pub fn new() -> Self {
         Self {
-            memory: Vec::from([0; 1 << 16]),
-            size: 0,
-            capacity: 1 << 16,
+            memory: Vec::from([0; MEMORY_MAX]),
         }
     }
 
-    pub fn read(&self, address: u16) -> u16 {
-        todo!();
+    pub fn read(&mut self, address: u16) -> u16 {
+        if address == MappedRegisters::KeyboardStatus as u16 {
+            if (check_key()) {
+                self.memory[MappedRegisters::KeyboardStatus as usize] = 1 << 15;
+                self.memory[MappedRegisters::KeyboardData as usize] = vm_io::get_char();
+            } else {
+                self.memory[MappedRegisters::KeyboardStatus as usize] = 0;
+            }
+        }
+
+        self.memory[address as usize]
     }
 
-    pub fn write(&self, address: u16, value: u16) {
-        todo!();
+    pub fn write(&mut self, address: u16, value: u16) {
+        self.memory[address as usize] = value;
     }
 }
 
@@ -82,7 +89,7 @@ impl Register {
     }
 }
 
-pub static PC_START: u16 = 0x3000;
+static PC_START: u16 = 0x3000;
 
 #[derive(Debug)]
 pub struct Registers {
@@ -119,7 +126,9 @@ impl Registers {
 
     pub fn update(&mut self, register: u16, value: u16) {
         self.registers[register as usize] = value;
-        self.update_flags(register);
+        if register < 8 {
+            self.update_flags(register);
+        }
     }
 
     fn update_flags(&mut self, register: u16) {
@@ -135,4 +144,9 @@ impl Registers {
             *cond_reg = Pos.value();
         }
     }
+}
+
+pub enum MappedRegisters {
+    KeyboardStatus = 0xFE00,
+    KeyboardData = 0xFE02,
 }
