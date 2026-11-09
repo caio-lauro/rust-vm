@@ -114,18 +114,22 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16, run
         }
         Opcodes::Jump => {
             let (_, r1, _) = decode_without_flag(instruction);
-            registers.update(Register::PC.u16(), registers.get(r1));
+            registers.update_raw(Register::PC.u16(), registers.get(r1));
         }
         Opcodes::JumpRegister => {
             let long_flag = (instruction >> 11) & 0x1 == 1;
+            let return_pc = registers.get(Register::PC.u16());
             if long_flag {
                 // JSR
                 let long_pc_offset = sign_extend(instruction & 0x7FF, 11);
+                registers.update_raw(Register::R7.u16(), return_pc);
                 registers.increment_pc_by(long_pc_offset);
             } else {
                 // JSRR
                 let (_, r1, _) = decode_without_flag(instruction);
-                registers.update(Register::PC.u16(), registers.get(r1));
+                let target = registers.get(r1);
+                registers.update_raw(Register::R7.u16(), return_pc);
+                registers.update_raw(Register::PC.u16(), target);
             }
         }
         Opcodes::Load => {
