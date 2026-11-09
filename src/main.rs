@@ -94,9 +94,9 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16, run
             let (r0, r1, imm_flag, rem) = decode_with_flag(instruction);
 
             let value = if imm_flag {
-                registers.get(r1) & registers.get(rem)
-            } else {
                 registers.get(r1) & rem
+            } else {
+                registers.get(r1) & registers.get(rem)
             };
 
             registers.update(r0, value);
@@ -158,6 +158,7 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16, run
         }
         Opcodes::StoreRegister => {
             let (sr, r0, offset) = decode_without_flag(instruction);
+            let r0 = registers.get(r0);
             memory.write(r0.wrapping_add(offset), registers.get(sr));
         }
         Opcodes::Trap => {
@@ -229,7 +230,7 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16, run
                 }
                 TrapVector::Halt => {
                     let mut stdout_handle = io::stdout().lock();
-                    vm_io::puts(b"HALT", &mut stdout_handle);
+                    vm_io::puts(b"HALT\n", &mut stdout_handle);
                     vm_io::flush(&mut stdout_handle);
                     *running = false;
                 }
