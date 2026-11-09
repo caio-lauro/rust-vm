@@ -112,8 +112,9 @@ impl Registers {
     }
 
     pub fn increment_pc_by(&mut self, value: u16) -> u16 {
-        self.registers[Register::PC.usize()] += value;
-        self.registers[Register::PC.usize()]
+        let pc = &mut self.registers[Register::PC.usize()];
+        (*pc) = (*pc).wrapping_add(value);
+        *pc
     }
 
     pub fn get(&self, register: u16) -> u16 {
