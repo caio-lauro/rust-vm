@@ -74,9 +74,9 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16, run
             let (r0, r1, imm_flag, rem) = decode_with_flag(instruction);
 
             let value = if imm_flag {
-                registers.get(r1) + registers.get(rem)
+                registers.get(r1).wrapping_add(rem)
             } else {
-                registers.get(r1) + rem
+                registers.get(r1).wrapping_add(registers.get(rem))
             };
 
             registers.update(r0, value);
@@ -84,7 +84,8 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16, run
         Opcodes::LoadIndirect => {
             let (r0, pc_offset) = decode_pc_offset9(instruction);
 
-            let addr = memory.read(registers.get(Register::PC.u16()) + pc_offset);
+            let pc = registers.get(Register::PC.u16());
+            let addr = memory.read(pc.wrapping_add(pc_offset));
             let value = memory.read(addr);
 
             registers.update(r0, value);
@@ -129,34 +130,35 @@ fn execute(registers: &mut Registers, memory: &mut Memory, instruction: u16, run
         }
         Opcodes::Load => {
             let (r0, pc_offset) = decode_pc_offset9(instruction);
-            registers.update(
-                r0,
-                memory.read(registers.get(Register::PC.u16()) + pc_offset),
-            );
+            let pc = registers.get(Register::PC.u16());
+            registers.update(r0, memory.read(pc.wrapping_add(pc_offset)));
         }
         Opcodes::LoadRegister => {
             let (r0, r1, offset) = decode_without_flag(instruction);
-            registers.update(r0, memory.read(registers.get(r1) + offset));
+            let r1 = registers.get(r1);
+            registers.update(r0, memory.read(r1.wrapping_add(offset)));
         }
         Opcodes::LoadEffectiveAddress => {
             let (r0, pc_offset) = decode_pc_offset9(instruction);
-            registers.update(r0, registers.get(Register::PC.u16()) + pc_offset);
+            let pc = registers.get(Register::PC.u16());
+            registers.update(r0, pc.wrapping_add(pc_offset));
         }
         Opcodes::Store => {
             let (sr, pc_offset) = decode_pc_offset9(instruction);
             memory.write(
-                registers.get(Register::PC.u16()) + pc_offset,
+                registers.get(Register::PC.u16()).wrapping_add(pc_offset),
                 registers.get(sr),
             );
         }
         Opcodes::StoreIndirect => {
             let (sr, pc_offset) = decode_pc_offset9(instruction);
-            let addr = memory.read(registers.get(Register::PC.u16()) + pc_offset);
+            let pc = registers.get(Register::PC.u16());
+            let addr = memory.read(pc.wrapping_add(pc_offset));
             memory.write(addr, registers.get(sr));
         }
         Opcodes::StoreRegister => {
             let (sr, r0, offset) = decode_without_flag(instruction);
-            memory.write(r0 + offset, registers.get(sr));
+            memory.write(r0.wrapping_add(offset), registers.get(sr));
         }
         Opcodes::Trap => {
             let trap_vector = instruction & 0xFF;
