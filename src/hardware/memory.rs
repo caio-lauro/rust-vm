@@ -125,8 +125,12 @@ impl Registers {
         self.registers[Register::CondFlags.usize()]
     }
 
-    pub fn update(&mut self, register: u16, value: u16) {
+    pub fn update_raw(&mut self, register: u16, value: u16) {
         self.registers[register as usize] = value;
+    }
+
+    pub fn update(&mut self, register: u16, value: u16) {
+        self.update_raw(register, value);
         if register < 8 {
             self.update_flags(register);
         }
